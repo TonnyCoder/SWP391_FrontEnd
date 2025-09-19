@@ -6,7 +6,7 @@ pipeline {
         // Project info
         APP_NAME = 'warranty-management-fe'
         RELEASE = '1'
-        // GITHUB_URL = 'https://github.com/TonnyCoder/SWP391_FrontEnd.git'
+        GITHUB_URL = 'https://github.com/TonnyCoder/SWP391_FrontEnd.git'
         GIT_MANIFEST_FILE = "https://github.com/fleeforezz/Manifest.git"
 
         // Sonar Scanner info
@@ -30,7 +30,7 @@ pipeline {
         stage('Git Checkout') {
             steps {
                 echo '#====================== Git Checkout for (${env.BRANCH_NAME}) ======================#'
-                checkout scm
+                git branch: "${env.BRANCH_NAME}", url: '${GITHUB_URL}',
             }
         }
 
