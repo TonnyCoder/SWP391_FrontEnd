@@ -233,12 +233,12 @@ pipeline {
             )
         }
 
-        cleanup {
-            sh """
-                docker rmi ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} || true
-                docker rmi ${env.IMAGE_TAGGED} || true
-                docker system prune -f || true
-            """
-        }
+        // cleanup {
+        //     sh """
+        //         docker rmi ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} || true
+        //         docker rmi ${env.IMAGE_TAGGED} || true
+        //         docker system prune -f || true
+        //     """
+        // }
     }
 }
