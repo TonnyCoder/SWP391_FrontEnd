@@ -191,8 +191,8 @@ pipeline {
                         curl -f http://localhost:${testPort} || exit 1
 
                         # Clean up
-                        #docker stop ${containerName}
-                        #docker rm ${containerName}
+                        docker stop ${containerName}
+                        docker rm ${containerName}
                     """
                 }
             }
