@@ -7,7 +7,7 @@ pipeline {
         APP_NAME = 'warranty-management-fe'
         RELEASE = '1'
         GITHUB_URL = 'https://github.com/NguyenThinhNe/SWP391_FrontEnd.git'
-        GIT_MANIFEST_FILE = "https://github.com/fleeforezz/Manifest.git"
+        GIT_MANIFEST_FILE = "https://github.com/NguyenThinhNe/FE_Manifest.git"
 
         // Sonar Scanner info
         SCANNER_HOME = tool 'sonarqube-scanner'
@@ -245,9 +245,13 @@ pipeline {
 
         stage("Checkout Manifest Repository"){
             steps{
-                echo "#====================== Checkout Manifest Repository ======================#"
-                sh 'rm -rf manifest'
-                sh 'git clone -b warranty-management ${GIT_MANIFEST_FILE} manifest'
+                script {
+                    echo "#====================== Checkout Manifest Repository ======================#"
+                    def currentBranch = env.BRANCH_NAME == 'master' ? 'prod' : 'dev'
+                    
+                    sh 'rm -rf manifest'
+                    sh 'git clone -b ${currentBranch} ${GIT_MANIFEST_FILE} manifest'
+                }
             }
         }
 
@@ -256,12 +260,11 @@ pipeline {
                 echo "#====================== Update Kubernetes Manifest Files ======================#"
                 dir('manifest') {
                     script {
-                        def manifestFile = (env.BRANCH_NAME == 'master') ? "manifest-prod.yml" : "manifest-dev.yml"
                         sh """
-                            echo "Updating ${APP_NAME} image to ${env.IMAGE_TAGGED} in ${manifestFile}"
-                            sed -i 's|image: .*${APP_NAME}:.*|image: ${env.IMAGE_TAGGED}|g' ${manifestFile}
-                            echo "Updated ${manifestFile}:"
-                            cat ${manifestFile} | grep -A 2 -B 2 "image:"
+                            echo "Updating ${APP_NAME} image to ${env.IMAGE_TAGGED} in manifest.yml"
+                            sed -i 's|image: .*${APP_NAME}:.*|image: ${env.IMAGE_TAGGED}|g' manifest.yml
+                            echo "Updated manifest.yml:"
+                            cat manifest.yml | grep -A 2 -B 2 "image:"
                         """
                     }
                 }
@@ -274,6 +277,8 @@ pipeline {
                 dir('manifest') {
                     script {
                         sshagent(['guests-ssh']) {
+                            def currentBranch = env.BRANCH_NAME == 'master' ? 'prod' : 'dev'
+                            
                             sh """
                             # Add Github to known hosts
                             mkdir -p ~/.ssh
@@ -290,10 +295,10 @@ pipeline {
                             git commit -m "🚀 Update ${APP_NAME} to ${env.IMAGE_TAGGED} [skip ci]" || echo "No changes to commit"
                                 
                             # Use SSH
-                            git remote set-url origin git@github.com:fleeforezz/Manifest.git
+                            git remote set-url origin git@github.com:NguyenThinhNe/FE_Manifest.git
 
                             # Push changes
-                            git push origin warranty-management
+                            git push origin ${currentBranch}
                             """
                         }
                     }
