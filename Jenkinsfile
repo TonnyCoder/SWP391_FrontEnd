@@ -6,7 +6,7 @@ pipeline {
         // Project info
         APP_NAME = 'warranty-management-fe'
         RELEASE = '1'
-        GITHUB_URL = 'https://github.com/TonnyCoder/SWP391_FrontEnd.git'
+        GITHUB_URL = 'https://github.com/NguyenThinhNe/SWP391_FrontEnd.git'
         GIT_MANIFEST_FILE = "https://github.com/fleeforezz/Manifest.git"
 
         // Sonar Scanner info
@@ -17,9 +17,26 @@ pipeline {
         DOCKER_USER = 'fleeforezz'
         DOCKER_IMAGE_NAME = "${DOCKER_USER}" + '/' + "${APP_NAME}"
         DOCKER_IMAGE_VERSION = "${RELEASE}.${env.BUILD_NUMBER}"
+
+        // Environment-specific variable
+        ENVIRONMENT = "${env.BRANCH_NAME == 'master' ? 'production' : 'development'}"
+        K8S_NAMESPACE = "${env.BRANCH_NAME == 'master' ? 'prod' : 'dev'}"
     }
 
     stages {
+        stage('Environment Info') {
+            steps {
+                script {
+                    echo "======================================="
+                    echo "Branch: ${env.BRANCH_NAME}"
+                    echo "Environment: ${ENVIRONMENT}"
+                    echo "Kubernetes Namespace: ${K8S_NAMESPACE}"
+                    echo "Build Trigger: ${env.BUILD_CAUSE}"
+                    echo "======================================="
+                }
+            }
+        }
+
         stage('Clean up WorkSpace') {
             steps {
                 echo "#====================== Clean up WorkSpace ======================#"
@@ -41,6 +58,7 @@ pipeline {
                     sh """
                         $SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectKey=${APP_NAME}-${env.BRANCH_NAME} \
+                        -Dsonar.projectName="${APP_NAME} (${ENVIRONMENT})" \
                         -Dsonar.host.url=${SONAR_HOST_URL}
                     """
                 }
@@ -50,8 +68,17 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 script {
-                    timeout(time: 2, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: true
+                    timeout(time: 3, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+
+                        if (qg.status != 'OK') {
+                            if (env.BRANCH_NAME == 'prod') {
+                                error "Quality Gate failed for PROD: ${qg.status}. Deployment blocked!"
+                            } else {
+                                echo "Quality Gate failed for DEV: ${qg.status}. Continuing with warnings..."
+                                currentBuild.result = 'UNSTABLE'
+                            }
+                        }
                     }
                 }
             }
@@ -60,8 +87,15 @@ pipeline {
         stage('Node Build') {
             steps {
                 echo "#====================== Node install and build ======================#"
-                sh "npm install"
-                sh "npm run build"
+                script {
+                    if (env.BRANCH_NAME == 'master') {
+                        sh "npm install"
+                        sh "npm run build:prod"
+                    } else {
+                        sh "npm install"
+                        sh "npm run build:dev"
+                    }
+                }
             }
         }
 
@@ -71,13 +105,34 @@ pipeline {
         //     }
         // }
 
-        stage('Trivy Filesystem Scan') {
-            steps {
-                echo "#====================== Trivy Filesystem scan ======================#"
-                sh 'trivy fs . > trivyfs.txt'
-                sh 'cat trivyfs.txt'
+        stage('Security Scans') {
+            parallel {
+                stage('Trivy Filesystem Scan') {
+                    steps {
+                        echo "#====================== Trivy Filesystem scan ======================#"
+                        sh """
+                            trivy fs . --format json --output trivyfs.json
+                            trivy fs . --format table --output trivy.txt
+                            cat trivy.txt
+                        """
+                        archiveArtifacts artifacts: 'trivy.*', allowEmptyArchive: true
+                    }
+                }
+
+                stage('NPM Audit') {
+                    steps {
+                        echo "#====================== NPM Security Audit ======================#"
+                        sh """
+                            npm audit --audit-level=high --json > npm-audit.json || true
+                            npm audit --audit-level=high || true
+                        """
+                        archiveArtifacts artifacts: 'npm-audit.json', allowEmptyArchive: true
+                    }
+                }
             }
         }
+
+        
 
         stage('Docker Build') {
             steps {
@@ -114,21 +169,24 @@ pipeline {
             steps {
                 echo "#====================== Docker Test ======================#"
                 script {
+                    def containerName = "test-${APP_NAME}-${env.BUILD_NUMBER}"
+                    def testPort = env.BRANCH_NAME == 'master' ? '3000' : '5173'
+
                     // Test docker in background
                     sh """
                         # Start container in background
-                        docker run -d --name test-warranty-management-fe-${env.BUILD_NUMBER} \
-                        -p 5173:5173 ${env.IMAGE_TAGGED}
+                        docker run -d --name ${containerName} \
+                        -p ${testPort}:${testPort} ${env.IMAGE_TAGGED}
 
                         # Wait for container to start
                         sleep 10
 
                         # Test if the container respone
-                        curl -f http://localhost:5173 || exit 1
+                        curl -f http://localhost:${testPort} || exit 1
 
                         # Clean up
-                        #docker stop test-warranty-management-fe-${env.BUILD_NUMBER}
-                        #docker rm test-warranty-management-fe-${env.BUILD_NUMBER}
+                        #docker stop ${containerName}
+                        #docker rm ${containerName}
                     """
                 }
             }
@@ -137,9 +195,23 @@ pipeline {
         stage('Trivy Docker Image Scan') {
             steps {
                 echo "#====================== Trivy Docker Image Scan ======================#"
-                sh "trivy image --no-progress --exit-code 1 --format json --severity UNKNOWN,HIGH,CRITICAL ${env.IMAGE_TAGGED} > trivyimage.txt || true"
+                script {
+                    def securityLevel = env.BRANCH_NAME == 'master' ? 'HIGH,CRITICAL' : 'CRITICAL'
 
-                sh 'cat trivyimage.txt'
+                    sh "trivy image --no-progress --exit-code 1 --format json --severity UNKNOWN,HIGH,CRITICAL ${env.IMAGE_TAGGED} > trivyimage.txt || true"
+
+                    sh """
+                        trivy image --no-progress --format json \
+                            --severity ${securityLevel} \
+                            --output trivyimage.json ${env.IMAGE_TAGGED}
+
+                        trivy image --no-progress --format table \
+                            --severity ${severityLevel} \
+                            --output trivyimage.txt ${env.IMAGE_TAGGED}
+                        
+                        cat trivyimage.txt
+                    """
+                }
                 archiveArtifacts artifacts: 'trivyimage.txt', allowEmptyArchive: true
             }
         }
@@ -152,9 +224,13 @@ pipeline {
                         def image = docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION}")
 
                         if (env.BRANCH_NAME == 'master') {
-                            image.tag('latest')
+                            echo "Pushing production images..."
+                            image.push('latest')
+                            image.push("v${DOCKER_IMAGE_VERSION}")
                         } else {
-                            image.push("${DOCKER_IMAGE_VERSION}-beta")
+                            echo "Pushing development images..."
+                            image.push("${DOCKER_IMAGE_VERSION}-dev")
+                            image.push('dev-latest')
                         }
                     }
                 }
@@ -222,26 +298,51 @@ pipeline {
 
     post {
         always {
+            def buildStatus = currentBuild.result ?: 'SUCCESS'
+            def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
+            def environment = env.BRANCH_NAME == 'master' ? 'PRODUCTION' : 'DEVELOPMENT'
+
             emailext(
                 attachLog: true,
-                subject: "${currentBuild.result} - ${env.JOB_NAME} Build #${env.BUILD_NUMBER}",
+                subject: "${statusIcon} ${buildStatus} - ${environment} Deployment - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                 body: """
-                    <b>Project:</b> ${env.JOB_NAME}<br/>
-                    <b>Build Number:</b> ${env.BUILD_NUMBER}<br/>
-                    <b>Docker Image Tag:</b> ${env.IMAGE_TAGGED}<br/>
-                    <b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a><br/>
-                    <b>Manifest Repository:</b> ${GIT_MANIFEST_FILE}<br/>
+                    <h2>${statusIcon} ${environment} Deployment ${buildStatus}</h2>
+
+                    <table border="1" cellpadding="5" cellspacing="0">
+                        <tr><td><b>Project:</b></td><td>${env.JOB_NAME}</td></tr>
+                        <tr><td><b>Build Number:</b></td><td>${env.BUILD_NUMBER}</td></tr>
+                        <tr><td><b>Environment:</b></td><td>${environment}</td></tr>
+                        <tr><td><b>Branch:</b></td><td>${env.BRANCH_NAME}</td></tr>
+                        <tr><td><b>Docker Image:</b></td><td>${env.IMAGE_TAGGED}</td></tr>
+                        <tr><td><b>Kubernetes Namespace:</b></td><td>${K8S_NAMESPACE}</td></tr>
+                        <tr><td><b>Build URL:</b></td><td><a href="${env.BUILD_URL}">${env.BUILD_URL}</a></td></tr>
+                    </table>
+
+                    <br/>
+                    <p><b>Artifacts:</b> Security scans and test reports are attached.</p>
+                        
+                    ${env.CHANGE_ID ? "<p><b>Pull Request:</b> #${env.CHANGE_ID} by ${env.CHANGE_AUTHOR}</p>" : ""}
                 """,
                 to: 'fleeforezz@gmail.com',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+                attachmentsPattern: 'trivyfs.*,trivyimage.*,npm-audit.json'
             )
+        }
+
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+
+        failure {
+            echo "💥 Pipeline failed. Check the logs for details."
         }
 
         cleanup {
             sh """
+                echo "🧹 Cleaning up Docker resources..."
                 docker rmi ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} || true
                 docker rmi ${env.IMAGE_TAGGED} || true
                 docker system prune -f || true
+                echo "✅ Cleanup completed"
             """
         }
     }
