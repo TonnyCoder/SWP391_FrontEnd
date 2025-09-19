@@ -124,8 +124,8 @@ pipeline {
                         curl -f http://localhost:5173 || exit 1
 
                         # Clean up
-                        docker stop test-warranty-management-fe-${env.BUILD_NUMBER}
-                        docker rm test-warranty-management-fe-${env.BUILD_NUMBER}
+                        #docker stop test-warranty-management-fe-${env.BUILD_NUMBER}
+                        #docker rm test-warranty-management-fe-${env.BUILD_NUMBER}
                     """
                 }
             }
