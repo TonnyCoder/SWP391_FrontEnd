@@ -47,7 +47,13 @@ pipeline {
         stage('Git Checkout') {
             steps {
                 echo '#====================== Git Checkout for (${env.BRANCH_NAME}) ======================#'
-                git branch: "${env.BRANCH_NAME}", url: '${GITHUB_URL}'
+                checkout scm: [$class: 'GitSCM',
+                    branches: [[name: "${env.BRANCH_NAME}"]],
+                    userRemoteConfigs: [[
+                        credentialsId: 'github-credentials',
+                        url: "${GITHUB_URL}"
+                    ]]
+                ]
             }
         }
 
