@@ -162,7 +162,7 @@ pipeline {
             steps{
                 echo "#====================== Checkout Manifest Repository ======================#"
                 sh 'rm -rf manifest'
-                sh 'git clone -b branch_here ${GIT_MANIFEST_FILE} manifest'
+                sh 'git clone -b warranty-management ${GIT_MANIFEST_FILE} manifest'
             }
         }
 
