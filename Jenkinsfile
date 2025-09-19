@@ -27,18 +27,22 @@ pipeline {
             }
         }
 
-        // stage('Git Checkout') {
-        //     steps {
-        //         echo '#====================== Git Checkout ======================#'
-        //         git branch: 'dev', url: "${GITHUB_URL}"
-        //     }
-        // }
+        stage('Git Checkout') {
+            steps {
+                echo '#====================== Git Checkout ======================#'
+                checkout scm
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     echo "#====================== Sonar Scan ======================#"
-                    sh "$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectKey=warranty-management-fe -Dsonar.host.url=${SONAR_HOST_URL}"
+                    sh """
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectKey=${APP_NAME}-${env.BRANCH_NAME} \ 
+                        -Dsonar.host.url=${SONAR_HOST_URL}
+                    """
                 }
             }
         }
@@ -96,7 +100,7 @@ pipeline {
                     )
 
                     // Set IMAGE_TAGGED dynamically
-                    if (env.BRANCH_NAME == 'main') {
+                    if (env.BRANCH_NAME == 'master') {
                         env.IMAGE_TAGGED = "${DOCKER_IMAGE_NAME}:latest"
                         dockerImage.tag('latest')  // ✅ Tag latest
                     } else {
@@ -148,7 +152,7 @@ pipeline {
                     withDockerRegistry(credentialsId: 'Docker_Login', toolName: 'Docker', url: 'https://index.docker.io/v1/') {
                         def image = docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION}")
 
-                        if (env.BRANCH_NAME == 'main') {
+                        if (env.BRANCH_NAME == 'master') {
                             image.tag('latest')
                         } else {
                             image.push("${DOCKER_IMAGE_VERSION}-beta")
@@ -207,7 +211,7 @@ pipeline {
                             git remote set-url origin git@github.com:fleeforezz/Manifest.git
 
                             # Push changes
-                            git push origin melville
+                            git push origin warranty-management
                             """
                         }
                     }
