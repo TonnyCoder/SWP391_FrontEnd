@@ -39,10 +39,10 @@ RUN chown -R warranty:warranty /app
 USER warranty
 
 # Expose the port
-EXPOSE 9232
+EXPOSE 5173
 
 # Set environment variables
-ENV PORT 9232
+ENV PORT 5173
 ENV HOSTNAME "0.0.0.0"
 
 # Start the application
