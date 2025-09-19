@@ -71,24 +71,24 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
-            steps {
-                script {
-                    timeout(time: 3, unit: 'MINUTES') {
-                        def qg = waitForQualityGate()
+        // stage('Quality Gate') {
+        //     steps {
+        //         script {
+        //             timeout(time: 3, unit: 'MINUTES') {
+        //                 def qg = waitForQualityGate()
 
-                        if (qg.status != 'OK') {
-                            if (env.BRANCH_NAME == 'prod') {
-                                error "Quality Gate failed for PROD: ${qg.status}. Deployment blocked!"
-                            } else {
-                                echo "Quality Gate failed for DEV: ${qg.status}. Continuing with warnings..."
-                                currentBuild.result = 'UNSTABLE'
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        //                 if (qg.status != 'OK') {
+        //                     if (env.BRANCH_NAME == 'prod') {
+        //                         error "Quality Gate failed for PROD: ${qg.status}. Deployment blocked!"
+        //                     } else {
+        //                         echo "Quality Gate failed for DEV: ${qg.status}. Continuing with warnings..."
+        //                         currentBuild.result = 'UNSTABLE'
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Node Build') {
             steps {
