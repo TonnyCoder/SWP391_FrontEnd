@@ -1,4 +1,4 @@
-FROM node:current-alpine3.22 AS build
+FROM node:current-alpine3.22 AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
