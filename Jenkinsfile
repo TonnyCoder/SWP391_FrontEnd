@@ -30,7 +30,7 @@ pipeline {
         stage('Git Checkout') {
             steps {
                 echo '#====================== Git Checkout for (${env.BRANCH_NAME}) ======================#'
-                git branch: "${env.BRANCH_NAME}", url: '${GITHUB_URL}',
+                git branch: "${env.BRANCH_NAME}", url: '${GITHUB_URL}'
             }
         }
 
