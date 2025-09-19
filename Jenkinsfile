@@ -212,7 +212,7 @@ pipeline {
                             --output trivyimage.json ${env.IMAGE_TAGGED}
 
                         trivy image --no-progress --format table \
-                            --severity ${severityLevel} \
+                            --severity ${securityLevel} \
                             --output trivyimage.txt ${env.IMAGE_TAGGED}
                         
                         cat trivyimage.txt
@@ -235,7 +235,7 @@ pipeline {
                             image.push("v${DOCKER_IMAGE_VERSION}")
                         } else {
                             echo "Pushing development images..."
-                            image.push("${DOCKER_IMAGE_VERSION}-dev")
+                            image.push("${DOCKER_IMAGE_VERSION}-beta")
                             image.push('dev-latest')
                         }
                     }
