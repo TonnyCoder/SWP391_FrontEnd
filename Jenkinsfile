@@ -76,7 +76,6 @@ pipeline {
                 echo "#====================== Trivy Filesystem scan ======================#"
                 sh 'trivy fs . > trivyfs.txt'
                 sh 'cat trivyfs.txt'
-                archiveArtifacts artifacts: 'trivyimage.txt', allowEmptyArchive: true
             }
         }
 
