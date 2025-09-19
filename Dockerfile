@@ -5,7 +5,7 @@ RUN npm ci --only=production
 COPY . .
 RUN npm run build:dev
 
-FROM alpine:3.22.1 AS run
+FROM nginx:alpine AS run
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.dev.conf /etc/nginx/nginx.conf
 EXPOSE 5173
