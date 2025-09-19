@@ -115,13 +115,13 @@ pipeline {
                     sh """
                         # Start container in background
                         docker run -d --name test-warranty-management-fe-${env.BUILD_NUMBER} \
-                        -p 5173:5173 ${env.IMAGE_TAGGED}
+                        -p 9232:5173 ${env.IMAGE_TAGGED}
 
                         # Wait for container to start
                         sleep 10
 
                         # Test if the container respone
-                        curl -f http://localhost:5173 || exit 1
+                        curl -f http://localhost:9232 || exit 1
 
                         # Clean up
                         #docker stop test-warranty-management-fe-${env.BUILD_NUMBER}
@@ -233,12 +233,12 @@ pipeline {
             )
         }
 
-        // cleanup {
-        //     sh """
-        //         docker rmi ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} || true
-        //         docker rmi ${env.IMAGE_TAGGED} || true
-        //         docker system prune -f || true
-        //     """
-        // }
+        cleanup {
+            sh """
+                docker rmi ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} || true
+                docker rmi ${env.IMAGE_TAGGED} || true
+                docker system prune -f || true
+            """
+        }
     }
 }
