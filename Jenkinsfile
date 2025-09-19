@@ -298,34 +298,36 @@ pipeline {
 
     post {
         always {
-            def buildStatus = currentBuild.result ?: 'SUCCESS'
-            def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
-            def environment = env.BRANCH_NAME == 'master' ? 'PRODUCTION' : 'DEVELOPMENT'
+            script {
+                def buildStatus = currentBuild.result ?: 'SUCCESS'
+                def statusIcon = buildStatus == 'SUCCESS' ? '✅' : '❌'
+                def environment = env.BRANCH_NAME == 'master' ? 'PRODUCTION' : 'DEVELOPMENT'
 
-            emailext(
-                attachLog: true,
-                subject: "${statusIcon} ${buildStatus} - ${environment} Deployment - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <h2>${statusIcon} ${environment} Deployment ${buildStatus}</h2>
+                emailext(
+                    attachLog: true,
+                    subject: "${statusIcon} ${buildStatus} - ${environment} Deployment - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: """
+                        <h2>${statusIcon} ${environment} Deployment ${buildStatus}</h2>
 
-                    <table border="1" cellpadding="5" cellspacing="0">
-                        <tr><td><b>Project:</b></td><td>${env.JOB_NAME}</td></tr>
-                        <tr><td><b>Build Number:</b></td><td>${env.BUILD_NUMBER}</td></tr>
-                        <tr><td><b>Environment:</b></td><td>${environment}</td></tr>
-                        <tr><td><b>Branch:</b></td><td>${env.BRANCH_NAME}</td></tr>
-                        <tr><td><b>Docker Image:</b></td><td>${env.IMAGE_TAGGED}</td></tr>
-                        <tr><td><b>Kubernetes Namespace:</b></td><td>${K8S_NAMESPACE}</td></tr>
-                        <tr><td><b>Build URL:</b></td><td><a href="${env.BUILD_URL}">${env.BUILD_URL}</a></td></tr>
-                    </table>
+                        <table border="1" cellpadding="5" cellspacing="0">
+                            <tr><td><b>Project:</b></td><td>${env.JOB_NAME}</td></tr>
+                            <tr><td><b>Build Number:</b></td><td>${env.BUILD_NUMBER}</td></tr>
+                            <tr><td><b>Environment:</b></td><td>${environment}</td></tr>
+                            <tr><td><b>Branch:</b></td><td>${env.BRANCH_NAME}</td></tr>
+                            <tr><td><b>Docker Image:</b></td><td>${env.IMAGE_TAGGED}</td></tr>
+                            <tr><td><b>Kubernetes Namespace:</b></td><td>${K8S_NAMESPACE}</td></tr>
+                            <tr><td><b>Build URL:</b></td><td><a href="${env.BUILD_URL}">${env.BUILD_URL}</a></td></tr>
+                        </table>
 
-                    <br/>
-                    <p><b>Artifacts:</b> Security scans and test reports are attached.</p>
-                        
-                    ${env.CHANGE_ID ? "<p><b>Pull Request:</b> #${env.CHANGE_ID} by ${env.CHANGE_AUTHOR}</p>" : ""}
-                """,
-                to: 'fleeforezz@gmail.com',
-                attachmentsPattern: 'trivyfs.*,trivyimage.*,npm-audit.json'
-            )
+                        <br/>
+                        <p><b>Artifacts:</b> Security scans and test reports are attached.</p>
+                            
+                        ${env.CHANGE_ID ? "<p><b>Pull Request:</b> #${env.CHANGE_ID} by ${env.CHANGE_AUTHOR}</p>" : ""}
+                    """,
+                    to: 'fleeforezz@gmail.com',
+                    attachmentsPattern: 'trivyfs.*,trivyimage.*,npm-audit.json'
+                )
+            }
         }
 
         success {

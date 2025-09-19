@@ -1,15 +1,15 @@
-# FROM node:current-alpine3.22 AS build
-# WORKDIR /app
-# COPY package*.json ./
-# RUN npm ci --only=production
-# COPY . .
-# RUN npm run build:prod
+FROM node:current-alpine3.22 AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY . .
+RUN npm run build:prod
 
-# FROM alpine:3.22.1 AS run
-# RUN addgroup -g 1001 -S nodejs
-# RUN adduser -S nextjs -u 1001
-# COPY --from=builder --chown=nextjs:nodejs /app/dist /usr/share/nginx/html
-# COPY nginx.prod.conf /etc/nginx/nginx.conf
-# EXPOSE 3000
-# USER nextjs
-# CMD ["nginx", "-g", "daemon off;"]
+FROM alpine:3.22.1 AS run
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+COPY --from=builder --chown=nextjs:nodejs /app/dist /usr/share/nginx/html
+COPY nginx.prod.conf /etc/nginx/nginx.conf
+EXPOSE 3000
+USER nextjs
+CMD ["nginx", "-g", "daemon off;"]
