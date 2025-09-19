@@ -250,7 +250,7 @@ pipeline {
                     def currentBranch = env.BRANCH_NAME == 'master' ? 'prod' : 'dev'
                     
                     sh 'rm -rf manifest'
-                    sh 'git clone -b ${currentBranch} ${GIT_MANIFEST_FILE} manifest'
+                    sh "git clone -b ${currentBranch} ${GIT_MANIFEST_FILE} manifest"
                 }
             }
         }
