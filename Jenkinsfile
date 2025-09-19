@@ -29,7 +29,7 @@ pipeline {
 
         stage('Git Checkout') {
             steps {
-                echo '#====================== Git Checkout ======================#'
+                echo '#====================== Git Checkout for (${env.BRANCH_NAME}) ======================#'
                 checkout scm
             }
         }
@@ -37,10 +37,10 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    echo "#====================== Sonar Scan ======================#"
+                    echo "#====================== Sonar Scan for (${env.BRANCH_NAME}) ======================#"
                     sh """
                         $SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectKey=${APP_NAME}-${env.BRANCH_NAME} \ 
+                        -Dsonar.projectKey=${APP_NAME}-${env.BRANCH_NAME} \
                         -Dsonar.host.url=${SONAR_HOST_URL}
                     """
                 }
@@ -175,11 +175,12 @@ pipeline {
                 echo "#====================== Update Kubernetes Manifest Files ======================#"
                 dir('manifest') {
                     script {
+                        def manifestFile = (env.BRANCH_NAME == 'master') ? "manifest-prod.yml" : "manifest-dev.yml"
                         sh """
-                            echo "Updating ${APP_NAME} image to ${env.IMAGE_TAGGED}"
-                            sed -i 's|image: .*${APP_NAME}:.*|image: ${env.IMAGE_TAGGED}|g' manifest.yml
-                            echo "Updated manifest.yml:"
-                            cat manifest.yml | grep -A 2 -B 2 "image:"
+                            echo "Updating ${APP_NAME} image to ${env.IMAGE_TAGGED} in ${manifestFile}"
+                            sed -i 's|image: .*${APP_NAME}:.*|image: ${env.IMAGE_TAGGED}|g' ${manifestFile}
+                            echo "Updated ${manifestFile}:"
+                            cat ${manifestFile} | grep -A 2 -B 2 "image:"
                         """
                     }
                 }
